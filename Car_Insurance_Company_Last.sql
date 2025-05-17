@@ -1,6 +1,6 @@
-CREATE DATABASE CarInsuranceSystem;
-USE CarInsuranceSystem;
-DROP DATABASE koko;
+CREATE DATABASE CarInsuranceSystem2;
+USE CarInsuranceSystem2;
+
 CREATE TABLE users (
     id INT IDENTITY(1,1) PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -9,36 +9,35 @@ CREATE TABLE users (
 
 -- Customers table
 CREATE TABLE customers (
-    id VARCHAR(50) PRIMARY KEY,
+    id INT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NOT NULL
+    phone VARCHAR(20) NOT NULL,
+    email VARCHAR(20) NOT NULL,
+    address VARCHAR(20) NOT NULL,
 );
 
 -- Cars table, linked to customers
 CREATE TABLE cars (
-    plate VARCHAR(20) PRIMARY KEY,
+    car_id INT PRIMARY KEY IDENTITY(1,1),
+    plate VARCHAR(20) UNIQUE NOT NULL,
     model VARCHAR(255) NOT NULL,
-    customer_id VARCHAR(50) NOT NULL,
+    year INT,
+    status BIT, -- 1 for insured, 0 for not
+    customer_id INT NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
 );
+
 
 -- Accidents table, linked to cars
 CREATE TABLE accidents (
     id VARCHAR(50) PRIMARY KEY,
     car_plate VARCHAR(20) NOT NULL,
+    damage_Cost DECIMAL(20) NOT NULL,
     description VARCHAR(MAX) NOT NULL,
     date DATE NOT NULL,
     FOREIGN KEY (car_plate) REFERENCES cars(plate) ON DELETE CASCADE
 );
-CREATE TABLE accident_participants (
-    accident_id VARCHAR(50) NOT NULL,
-    car_plate VARCHAR(20) NOT NULL,
-    role VARCHAR(100),         -- Optional
-    damage_level VARCHAR(50),  -- Optional
-    PRIMARY KEY (accident_id, car_plate),
-    FOREIGN KEY (accident_id) REFERENCES accidents(id) ON DELETE CASCADE,
-    FOREIGN KEY (car_plate) REFERENCES cars(plate) ON DELETE NO ACTION
-);
+
 CREATE TABLE insurance_policies (
     policy_id VARCHAR(50) PRIMARY KEY,
     start_date DATE NOT NULL,
@@ -50,19 +49,31 @@ CREATE TABLE insurance_policies (
 
 CREATE TABLE monthly_reports (
     ReportID INT PRIMARY KEY IDENTITY(1,1),
-    Month VARCHAR(10) NOT NULL,              -- e.g., '2024-05'
-    totalAccidents INT NOT NULL,             -- number of accidents reported in that month
-    generatedDate DATE NOT NULL,             -- when the report was generated
-    generatedBy VARCHAR(50) NOT NULL         -- name or ID of the staff who generated it
+    Month VARCHAR(10) NOT NULL,             
+    totalAccidents INT NOT NULL,             
+    generatedDate DATE NOT NULL,            
+    generatedBy VARCHAR(50) NOT NULL         
 );
+
+CREATE TABLE driver_licenses (
+    customer_id INT,                 -- FK from customers
+    license_number VARCHAR(50),              -- Part of PK, e.g., 'DL12345678'
+    issue_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    license_type VARCHAR(30),                -- e.g., 'Private', 'Commercial'
+
+    PRIMARY KEY (customer_id, license_number),
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+
 
 SELECT * FROM users;
 SELECT * FROM customers;
 SELECT * FROM accidents;
 SELECT * FROM monthly_reports;
-
 SELECT * FROM insurance_policies;
 SELECT * FROM cars;
+SELECT * FROM driver_licenses;
 
 
 
@@ -128,6 +139,9 @@ WHERE c.model = @Model;
 
 
 
+
+
+-- USERS
 INSERT INTO users (username, password)
 VALUES 
 ('admin', 'admin123'),
@@ -135,52 +149,54 @@ VALUES
 ('user2', 'pass2');
 
 
-INSERT INTO customers (id, name, phone)
+-- CUSTOMERS
+INSERT INTO customers (id, name, phone, email, address)
 VALUES 
-('C001', 'Ahmed Mohamed', '123456789'),
-('C002', 'Fatima Noor', '987654321'),
-('C003', 'John Doe', '555666777'),
-('C004', 'Ali Hassan', '111222333');
+(1, 'Ahmed Mohamed', '123456789', 'ahmed@example.com', '123 Main St'),
+(2, 'Fatima Noor', '987654321', 'fatima@example.com', '456 Park Ave'),
+(3, 'John Doe', '555666777', 'john@example.com', '789 Elm Rd'),
+(4, 'Ali Hassan', '111222333', 'ali@example.com', '321 Oak St');
 
 
-INSERT INTO cars (plate, model, customer_id)
+-- CARS
+INSERT INTO cars (plate, model, year, status, customer_id)
 VALUES 
-('ABC123', 'Toyota Corolla', 'C001'),
-('XYZ789', 'Honda Civic', 'C002'),
-('DEF456', 'Toyota Corolla', 'C003'),
-('LMN321', 'Ford Focus', 'C004'),
-('GHJ567', 'Hyundai Elantra', 'C001');
+('ABC123', 'Toyota Corolla', 2015, 1, 1),
+('XYZ789', 'Honda Civic', 2018, 1, 2),
+('DEF456', 'Toyota Corolla', 2017, 1, 3),
+('LMN321', 'Ford Focus', 2019, 1, 4),
+('GHJ567', 'Hyundai Elantra', 2020, 1, 1);
 
 
-INSERT INTO accidents (id, car_plate, description, date)
+-- ACCIDENTS
+INSERT INTO accidents (id, car_plate, damage_cost, description, date)
 VALUES 
-('A001', 'ABC123', 'Minor rear-end collision', '2017-05-10'),
-('A002', 'DEF456', 'Hit and run', '2017-08-12'),
-('A003', 'XYZ789', 'Side swipe', '2018-03-14'),
-('A004', 'GHJ567', 'Fender bender', '2024-01-11'),
-('A005', 'DEF456', 'T-bone accident', '2017-11-22'),
-('A006', 'XYZ789', 'Glass damage', '2024-02-17');
+('A001', 'ABC123', 1500.00, 'Minor rear-end collision', '2017-05-10'),
+('A002', 'DEF456', 7000.00, 'Hit and run', '2017-08-12'),
+('A003', 'XYZ789', 1200.00, 'Side swipe', '2018-03-14'),
+('A004', 'GHJ567', 2300.00, 'Fender bender', '2024-01-11'),
+('A005', 'DEF456', 5500.00, 'T-bone accident', '2017-11-22'),
+('A006', 'XYZ789', 900.00, 'Glass damage', '2024-02-17');
 
-INSERT INTO accident_participants (accident_id, car_plate, role, damage_level)
-VALUES 
--- Accident A001 involved one car
-('A001', 'ABC123', 'victim', 'minor'),
 
--- Accident A002 involved multiple cars
-('A002', 'ABC123', 'at fault', 'major'),
-('A002', 'DEF456', 'victim', 'moderate'),
-('A002', 'XYZ789', 'witness', 'none'),
 
--- Accident A003 involved one car
-('A003', 'XYZ789', 'at fault', 'minor');
-
+-- INSURANCE_POLICIES
 INSERT INTO insurance_policies (policy_id, start_date, end_date, coverage_type, premium_amount)
 VALUES 
 ('POL001', '2024-01-01', '2025-01-01', 'Comprehensive', 1200.00),
 ('POL002', '2024-06-01', '2025-06-01', 'Third Party', 750.00),
 ('POL003', '2024-03-15', '2025-03-15', 'Comprehensive', 980.50);
-   
 
 
+-- MONTHLY_REPORTS
 INSERT INTO monthly_reports (Month, totalAccidents, generatedDate, generatedBy)
-VALUES ('2024-05', 12, GETDATE(), 'AdminUser1');
+VALUES 
+('2024-05', 12, GETDATE(), 'AdminUser1');
+
+INSERT INTO driver_licenses (customer_id, license_number, issue_date, expiry_date, license_type)
+VALUES
+(1, 'DL100001', '2018-01-15', '2028-01-15', 'Private'),
+(1, 'DL100002', '2020-06-10', '2030-06-10', 'Commercial'),
+(2, 'DL200001', '2019-03-20', '2029-03-20', 'Private'),
+(3, 'DL300001', '2017-11-05', '2027-11-05', 'Private'),
+(4, 'DL400001', '2021-07-01', '2031-07-01', 'Commercial');
